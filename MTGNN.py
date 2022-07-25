@@ -13,6 +13,16 @@ class NConv(nn.Module):
         super(NConv, self).__init__()
 
     def forward(self, x, adj):
+        """
+        A * X
+
+        Args:
+            x(torch.tensor):  (B, input_channels, N, T)
+            adj(torch.tensor):  N * N
+
+        Returns:
+            torch.tensor: (B, input_channels, N, T)
+        """
         x = torch.einsum('ncwl,vw->ncvl', (x, adj))
         return x.contiguous()
 
@@ -45,6 +55,15 @@ class Prop(nn.Module):
         self.alpha = alpha
 
     def forward(self, x, adj):
+        """
+
+        Args:
+            x(torch.tensor):  (B, c_in, N, T)
+            adj(torch.tensor):  N * N
+
+        Returns:
+            torch.tensor: (B, c_out, N, T)
+        """
         adj = adj + torch.eye(adj.size(0)).to(x.device)
         d = adj.sum(1)
         h = x
@@ -58,6 +77,16 @@ class Prop(nn.Module):
 
 class MixProp(nn.Module):
     def __init__(self, c_in, c_out, gdep, dropout, alpha):
+        """
+        MixProp GCN
+
+        Args:
+            c_in: input
+            c_out: output
+            gdep: GCN layers
+            dropout: dropout
+            alpha: beta in paper
+        """
         super(MixProp, self).__init__()
         self.nconv = NConv()
         self.mlp = Linear((gdep+1)*c_in, c_out)
@@ -66,17 +95,30 @@ class MixProp(nn.Module):
         self.alpha = alpha
 
     def forward(self, x, adj):
+        """
+        MixProp GCN
+
+        Args:
+            x(torch.tensor):  (B, c_in, N, T)
+            adj(torch.tensor):  N * N
+
+        Returns:
+            torch.tensor: (B, c_out, N, T)
+        """
         adj = adj + torch.eye(adj.size(0)).to(x.device)
         d = adj.sum(1)
         h = x
-        out = [h]
-        a = adj / d.view(-1, 1)
+        out = [h]  # h(0) = h_in = x
+        a = adj / d.view(-1, 1)  # A' = A * D^-1
         for i in range(self.gdep):
+            # h(k) = alpha * h_in + (1 - alpha) * A' * H(k-1)
+            # h: shape = (B, c_in, N, T)
             h = self.alpha*x + (1-self.alpha)*self.nconv(h, a)
             out.append(h)
+        # ho: (B, c_in * (gdep + 1), N, T)
         ho = torch.cat(out, dim=1)
         ho = self.mlp(ho)
-        return ho
+        return ho  # (B, c_out, N, T)
 
 
 class DyMixprop(nn.Module):
@@ -139,6 +181,15 @@ class DilatedInception(nn.Module):
             self.tconv.append(nn.Conv2d(cin, cout, (1, kern), dilation=(1, dilation_factor)))
 
     def forward(self, input):
+        """
+
+        Args:
+            inputs: (B, C_in, N, T)
+
+        Returns:
+            torch.tensor: (B, C_out, N, T)
+
+        """
         x = []
         for i in range(len(self.kernel_set)):
             x.append(self.tconv[i](input))
@@ -342,7 +393,7 @@ class MTGNN(nn.Module):
         self.device = config['device']
 
         self.gcn_true = config.get('gcn_true', True)
-        self.add_apt = config.get('add_apt', True)
+        self.add_apt = config.get('add_apt', False)
         self.gcn_depth = config.get('gcn_depth', 2)
         self.dropout = config.get('dropout', 0.3)
         self.subgraph_size = config.get('subgraph_size', 20)
@@ -458,6 +509,7 @@ class MTGNN(nn.Module):
         inputs = (inputs - data_mean) / data_scale
 
         if self.data_diff:
+            # add Data Differential Features
             inputs_diff = inputs[:, :, 1:, -1:] - inputs[:, :, :-1, -1:]
             inputs_diff = torch.cat((torch.zeros(bz, id_len, 1, 1).to(inputs.device), inputs_diff), 2)
             inputs = torch.cat((inputs, inputs_diff), 3)

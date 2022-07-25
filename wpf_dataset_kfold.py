@@ -4,27 +4,8 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from logging import getLogger
 from tqdm import tqdm
+from wpf_dataset import time_dict
 # from fastdtw import fastdtw
-
-
-time_dict = {
- '00:00': 0, '00:10': 1, '00:20': 2, '00:30': 3, '00:40': 4, '00:50': 5, '01:00': 6, '01:10': 7, '01:20': 8, '01:30': 9,
- '01:40': 10, '01:50': 11, '02:00': 12, '02:10': 13, '02:20': 14, '02:30': 15, '02:40': 16, '02:50': 17, '03:00': 18,
- '03:10': 19, '03:20': 20, '03:30': 21, '03:40': 22, '03:50': 23, '04:00': 24, '04:10': 25, '04:20': 26, '04:30': 27,
- '04:40': 28, '04:50': 29, '05:00': 30, '05:10': 31, '05:20': 32, '05:30': 33, '05:40': 34, '05:50': 35, '06:00': 36,
- '06:10': 37, '06:20': 38, '06:30': 39, '06:40': 40, '06:50': 41, '07:00': 42, '07:10': 43, '07:20': 44, '07:30': 45,
- '07:40': 46, '07:50': 47, '08:00': 48, '08:10': 49, '08:20': 50, '08:30': 51, '08:40': 52, '08:50': 53, '09:00': 54,
- '09:10': 55, '09:20': 56, '09:30': 57, '09:40': 58, '09:50': 59, '10:00': 60, '10:10': 61, '10:20': 62, '10:30': 63,
- '10:40': 64, '10:50': 65, '11:00': 66, '11:10': 67, '11:20': 68, '11:30': 69, '11:40': 70, '11:50': 71, '12:00': 72,
- '12:10': 73, '12:20': 74, '12:30': 75, '12:40': 76, '12:50': 77, '13:00': 78, '13:10': 79, '13:20': 80, '13:30': 81,
- '13:40': 82, '13:50': 83, '14:00': 84, '14:10': 85, '14:20': 86, '14:30': 87, '14:40': 88, '14:50': 89, '15:00': 90,
- '15:10': 91, '15:20': 92, '15:30': 93, '15:40': 94, '15:50': 95, '16:00': 96, '16:10': 97, '16:20': 98, '16:30': 99,
- '16:40': 100, '16:50': 101, '17:00': 102, '17:10': 103, '17:20': 104, '17:30': 105, '17:40': 106, '17:50': 107,
- '18:00': 108, '18:10': 109, '18:20': 110, '18:30': 111, '18:40': 112, '18:50': 113, '19:00': 114, '19:10': 115,
- '19:20': 116, '19:30': 117, '19:40': 118, '19:50': 119, '20:00': 120, '20:10': 121, '20:20': 122, '20:30': 123,
- '20:40': 124, '20:50': 125, '21:00': 126, '21:10': 127, '21:20': 128, '21:30': 129, '21:40': 130, '21:50': 131,
- '22:00': 132, '22:10': 133, '22:20': 134, '22:30': 135, '22:40': 136, '22:50': 137, '23:00': 138, '23:10': 139,
- '23:20': 140, '23:30': 141, '23:40': 142, '23:50': 143}
 
 
 class ListDataset(Dataset):
@@ -97,7 +78,7 @@ class PGL4WPFDataset():
         df_data, raw_df_data = self.data_preprocess(df_raw)  # (t * n, f)
 
         self.df_data = df_data  # nan->0
-        self.raw_df_data = raw_df_data  # 可能有nan
+        self.raw_df_data = raw_df_data  # contain nan
 
         x, y, data, raw_data = self.generate_input_data(self.df_data)
         x_train, y_train, x_val, y_val = self.split_train_val_test(x, y)
@@ -168,12 +149,12 @@ class PGL4WPFDataset():
         """
 
         Args:
-            df(np.ndarray): 数据数组，shape: (len_time * 134, feature_dim)
+            df_data(np.ndarray): shape: (len_time * 134, feature_dim)
 
         Returns:
             tuple: tuple contains:
-                x(np.ndarray): 模型输入数据，(size, input_length, 134, feature_dim)
-                y(np.ndarray): 模型输出数据，(size, output_length, 134, feature_dim)
+                x(np.ndarray): (size, input_length, 134, feature_dim)
+                y(np.ndarray): (size, output_length, 134, feature_dim)
         """
         cols_data = df_data.columns
         df_data = df_data[cols_data]
@@ -187,15 +168,15 @@ class PGL4WPFDataset():
         raw_data = np.reshape(raw_data, [self.capacity, self.total_size, len(raw_cols_data)])  # (134, t, f), n = 134t
 
         num_samples = data.shape[1]  # t-dim
-        # 预测用的过去时间窗口长度 取决于self.input_length
+        # The length of the past time window for the prediction, depends on self.input_length
         x_offsets = np.sort(np.concatenate((np.arange(-self.input_len + 1, 1, 1),)))
-        # 未来时间窗口长度 取决于self.output_length
+        # The length of future time window, depends on self.output_length
         y_offsets = np.sort(np.arange(1, self.output_len + 1, 1))
 
         x, y = [], []
         min_t = abs(min(x_offsets))  # input_len - 1
         max_t = abs(num_samples - abs(max(y_offsets)))  # n - output_len
-        for t in tqdm(range(min_t, max_t), desc='split data'):  # 总数 = max_t - min_t = n - output_len - input_len + 1
+        for t in tqdm(range(min_t, max_t), desc='split data'):  # total = max_t - min_t = n - output_len - input_len + 1
             x_t = data[:, t + x_offsets, :]
             y_t = data[:, t + y_offsets, :]
             x.append(x_t)  # (134, input_len, f)
@@ -208,7 +189,6 @@ class PGL4WPFDataset():
 
     def split_train_val_test(self, x, y):
         """
-        划分训练集、测试集、验证集，并缓存数据集
 
         Args:
             x(np.ndarray): 输入数据 (num_samples, 134, input_len, feature_dim)

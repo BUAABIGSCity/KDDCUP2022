@@ -12,7 +12,6 @@ from MTGNN import MTGNN
 from AGCRN import AGCRN
 from metrics import regressor_scores, regressor_detailed_scores
 from utils import save_model, _create_if_not_exist, get_logger, str2bool, ensure_dir
-from scheduler import CosineLRScheduler
 from logging import getLogger
 from tqdm import tqdm
 
@@ -116,10 +115,6 @@ def build_lr_scheduler(config, log, optimizer):
             lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, mode='min', patience=config.lr_patience,
                     factor=config.lr_decay_ratio, threshold=config.lr_threshold)
-        elif config.lr_scheduler_type.lower() == 'cosine':
-            lr_scheduler = CosineLRScheduler(
-                optimizer, t_initial=config.epoch, lr_min=config.lr_eta_min, decay_rate=config.lr_decay_ratio,
-                warmup_t=config.lr_warmup_epoch, warmup_lr_init=config.lr_warmup_init)
         else:
             log.warning('Received unrecognized lr_scheduler, please check the parameter `lr_scheduler`.')
             lr_scheduler = None
@@ -235,8 +230,6 @@ def train_and_evaluate(config, train_data, valid_data, test_data=None):
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_norm)
             if global_step % grad_accmu_steps == 0:
                 opt.step()
-                if lr_scheduler is not None and config.lr_scheduler_type.lower() == 'cosine':
-                    lr_scheduler.step_update(num_updates=global_step)
                 opt.zero_grad()
             global_step += 1
             losses.append(loss.item())
@@ -261,8 +254,6 @@ def train_and_evaluate(config, train_data, valid_data, test_data=None):
         if lr_scheduler is not None:
             if config.lr_scheduler_type.lower() == 'reducelronplateau':
                 lr_scheduler.step(valid_r['loss'])
-            elif config.lr_scheduler_type.lower() == 'cosine':
-                lr_scheduler.step(epoch + 1)
             else:
                 lr_scheduler.step()
 
@@ -375,31 +366,27 @@ if __name__ == "__main__":
     parser.add_argument("--conf", type=str, default="./config.yaml")
     parser.add_argument("--model", type=str, default="MTGNN")
     parser.add_argument("--gpu_id", type=int, default=0)
+    parser.add_argument("--epoch", type=int, default=30)
+    parser.add_argument("--input_len", type=int, default=144, help='input data len')
+    parser.add_argument("--output_len", type=int, default=288, help='output data len')
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--weight_decay", type=float, default=0)
+    parser.add_argument("--train_days", type=int, default=214)
+    parser.add_argument("--val_days", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--seed", type=int, default=0)
+
     parser.add_argument("--random", type=str2bool, default=False, help='Whether shuffle num_nodes')
     parser.add_argument("--enhance", type=str2bool, default=True, help='Whether enhance the time dim')
     parser.add_argument("--only_useful", type=str2bool, default=True, help='Whether remove some feature')
     parser.add_argument("--var_len", type=int, default=5, help='Dimensionality of input features')
     parser.add_argument("--data_diff", type=str2bool, default=False, help='Whether to use data differential features')
-    parser.add_argument("--input_len", type=int, default=144, help='input data len')
-    parser.add_argument("--output_len", type=int, default=288, help='output data len')
-    parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--weight_decay", type=float, default=0)
-    # parser.add_argument("--dropout", type=float, default=0)
-    # parser.add_argument("--rnn_units", type=int, default=64)
-    # parser.add_argument("--embed_dim", type=int, default=10)
-    # parser.add_argument("--cheb_order", type=int, default=2)
-    # parser.add_argument("--num_layers", type=int, default=2)
-    parser.add_argument("--add_apt", type=str2bool, default=True)
-    parser.add_argument("--binary", type=str2bool, default=True)
-    # parser.add_argument("--time_dim", type=int, default=0)
-    parser.add_argument("--train_days", type=int, default=214)
-    parser.add_argument("--val_days", type=int, default=16)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--graph_type", type=str, default="dtw", help='graph type, dtw or geo')
+    parser.add_argument("--add_apt", type=str2bool, default=False, help='Whether to use adaptive matrix')
+    parser.add_argument("--binary", type=str2bool, default=True, help='Whether to set the adjacency matrix as binary')
+    parser.add_argument("--graph_type", type=str, default="geo", help='graph type, dtw or geo')
     parser.add_argument("--dtw_topk", type=int, default=5, help='M dtw for dtw graph')
     parser.add_argument("--weight_adj_epsilon", type=float, default=0.8, help='epsilon for geo graph')
     parser.add_argument("--gsteps", type=int, default=1, help='Gradient Accumulation')
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--loss", type=str, default='FilterHuberLoss')
     parser.add_argument("--select", nargs='+', type=str,
                         default=['weekday', 'time', 'Wspd', 'Etmp', 'Itmp', 'Prtv', 'Patv'])

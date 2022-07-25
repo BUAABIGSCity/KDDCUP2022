@@ -5,9 +5,6 @@ import torch.nn.functional as F
 import torch.nn as nn
 from logging import getLogger
 
-# 跟AGCRN比，加入预定义的图（graph_type = {geo, dtw, sem, geo_dtw, geo_sem}）
-# 使用参数add_apt控制是否使用可学习的图
-
 
 def calculate_normalized_laplacian(adj):
     """
@@ -56,7 +53,7 @@ class VWGCN(nn.Module):
         if self.dropout_rate != 0:
             node_embeddings = self.dropout(node_embeddings)
         support_set = [torch.eye(node_num).to(x.device), lap]
-        # default cheb_k = 3 迭代计算邻接矩阵的各阶切比雪夫多项式Tk的结果
+        # default cheb_k = 3
         # Tk(L) = 2 * L * Tk-1(L) - Tk-2(L)
         for k in range(2, self.cheb_k):
             support_set.append(torch.matmul(2 * lap, support_set[-1]) - support_set[-2])
@@ -83,7 +80,7 @@ class AGCRNCell(nn.Module):
 
     def forward(self, x, state, node_embeddings, graph_lap=None):
         """
-        变型的GRU
+        modified GRU
 
         Args:
             x(torch.tensor): (B, num_nodes, input_dim)
@@ -129,7 +126,7 @@ class AVWDCRNN(nn.Module):
 
     def forward(self, x, init_state, node_embeddings, graph_lap=None):
         """
-        多层GRU
+        Multi GRU
 
         Args:
             x(torch.tensor): (B, T, N, D)
@@ -147,10 +144,10 @@ class AVWDCRNN(nn.Module):
         seq_length = x.shape[1]  # input_window
         current_inputs = x
         output_hidden = []
-        for i in range(self.num_layers):  # 多层GRU
+        for i in range(self.num_layers):
             state = init_state[i]  # (B, N, hidden_dim)
             inner_states = []
-            for t in range(seq_length):  # 多个时间步 输入GRU循环
+            for t in range(seq_length):
                 # (B, N, D) + (B, N, hidden_dim) + (N, D)  -->  (B, N, hidden_dim)
                 state = self.dcrnn_cells[i](current_inputs[:, t, :, :], state, node_embeddings, graph_lap)
                 inner_states.append(state)  # (B, N, hidden_dim)
@@ -184,12 +181,8 @@ class AGCRN(nn.Module):
 
         self.hidden_dim = config.get('rnn_units', 64)
         self.embed_dim = config.get('embed_dim', 10)
-        self.time_dim = config.get('time_dim', 0)
         self.dropout_rate = config.get('dropout', 0)
         self.device = config.get('device', torch.device('cpu'))
-        if self.time_dim != 0:
-            self.time_emb = nn.Embedding(144, self.time_dim)
-            config['feature_dim'] = self.feature_dim + self.time_dim
 
         self.node_embeddings = nn.Parameter(torch.randn(self.num_nodes, self.embed_dim), requires_grad=True)
         self.encoder = AVWDCRNN(config)
@@ -218,13 +211,10 @@ class AGCRN(nn.Module):
         inputs = (inputs - data_mean) / data_scale
 
         if self.data_diff:
+            # add Data Differential Features
             inputs_diff = inputs[:, :, 1:, -1:] - inputs[:, :, :-1, -1:]
             inputs_diff = torch.cat((torch.zeros(bz, id_len, 1, 1).to(inputs.device), inputs_diff), 2)
             inputs = torch.cat((inputs, inputs_diff), 3)
-
-        if self.time_dim != 0:
-            time_emb = self.time_emb(batch_x[:, :, :, 1].long())  # (batch_size, num_nodes, input_window, hid_dim)
-            inputs = torch.cat([inputs, time_emb], axis=3)  # (batch_size, num_nodes, input_window, hid_dim+feature_dim)
 
         inputs = inputs.permute((0, 2, 1, 3))  # (batch_size, input_window, num_nodes, feature_dim)
 

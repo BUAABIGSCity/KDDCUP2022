@@ -53,14 +53,28 @@ def prep_env():
         "seed": 0,
         "data_diff": False,
 
+        "num_workers": 2,
+        "train_epochs": 30,
+        "batch_size": 32,
+        "patience": 2,
+        "lr": 1e-3,
+        "lr_adjust": "type1",
+        "gpu": 0,
+        "capacity": 134,
+        "turbine_id": 0,
+        "pred_file": "predict.py",
+        "framework": "pytorch",
+        "is_debug": True,
+
+        # AGCRN model
         "model_list": [
             {
                 "start_col": 0,
                 "var_len": 6,
-                "model": "AGCRNv1",
+                "model": "AGCRN",
                 "best": 2,
                 "exp_id": '31543',
-                "checkpoints_in": "31543_AGCRNv1",
+                "checkpoints_in": "31543_AGCRN",
                 "random": False,
                 "only_useful": True,
                 "dropout": 0,
@@ -76,10 +90,10 @@ def prep_env():
             {
                 "start_col": 0,
                 "var_len": 6,
-                "model": "AGCRNv1",
+                "model": "AGCRN",
                 "best": 0,
                 "exp_id": '94237',
-                "checkpoints_in": "94237_AGCRNv1",
+                "checkpoints_in": "94237_AGCRN",
                 "random": False,
                 "only_useful": True,
                 "dropout": 0,
@@ -95,10 +109,10 @@ def prep_env():
             {
                 "start_col": 0,
                 "var_len": 6,
-                "model": "AGCRNv1",
+                "model": "AGCRN",
                 "best": 1,
                 "exp_id": '43292',
-                "checkpoints_in": "43292_AGCRNv1",
+                "checkpoints_in": "43292_AGCRN",
                 "random": False,
                 "only_useful": True,
                 "dropout": 0,
@@ -114,10 +128,10 @@ def prep_env():
             {
                 "start_col": 0,
                 "var_len": 6,
-                "model": "AGCRNv1",
+                "model": "AGCRN",
                 "best": 1,
                 "exp_id": '98201',
-                "checkpoints_in": "98201_AGCRNv1",
+                "checkpoints_in": "98201_AGCRN",
                 "random": False,
                 "only_useful": True,
                 "dropout": 0,
@@ -133,10 +147,10 @@ def prep_env():
             {
                 "start_col": 0,
                 "var_len": 6,
-                "model": "AGCRNv1",
+                "model": "AGCRN",
                 "best": 0,
                 "exp_id": '8204',
-                "checkpoints_in": "8204_AGCRNv1",
+                "checkpoints_in": "8204_AGCRN",
                 "random": False,
                 "only_useful": True,
                 "dropout": 0,
@@ -150,6 +164,7 @@ def prep_env():
                 "data_diff": True,
             },
         ],
+        # MTGNN model
         "model_list2": [
             {
                 "start_col": 0,
@@ -169,19 +184,6 @@ def prep_env():
                 "data_diff": False,
             },
         ],
-
-        "num_workers": 2,
-        "train_epochs": 30,
-        "batch_size": 32,
-        "patience": 2,
-        "lr": 1e-3,
-        "lr_adjust": "type1",
-        "gpu": 0,
-        "capacity": 134,
-        "turbine_id": 0,
-        "pred_file": "predict.py",
-        "framework": "pytorch",
-        "is_debug": True
     }
     settings['device'] = torch.device('cuda:0')
 

@@ -53,7 +53,7 @@ def predict(settings, data_mean, data_scale, graph):
                 test_x_ds.get_data()[:, :, -settings['input_len']:, :]).to(settings['device'])
 
         print(test_x.shape, data_mean.shape, data_scale.shape)
-        pred_y = model(test_x, None, data_mean, data_scale, graph)  # (B,N,T)
+        pred_y = model(test_x, None, data_mean, data_scale)  # (B,N,T)
         pred_y = F.relu(pred_y * data_scale[:, :, :, -1] + data_mean[:, :, :, -1])  # (B,N,T)
 
         pred_y = np.expand_dims(pred_y.cpu().numpy(), -1)[0]  # (N,T,1)
@@ -71,21 +71,25 @@ def forecast(settings):
     Returns:
         The predictions as a tensor \in R^{134 * 288 * 1}
     """
+    # AGCRN model prediction (model_list)
     res = []
     weights = []
     for i in range(len(settings['model_list'])):
+        # Select one of the models at a time
         di = settings['model_list'][i]
         settings.update(di)
         print(settings)
         print(settings['model'], settings['checkpoints_in'], settings['weight'])
         weights.append(settings['weight'])
 
+        # load data_mean/scale
         data_mean = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                          "npy/data_mean_{}.npy".format(settings['train_days'])))
         data_scale = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                           "npy/data_scale_{}.npy".format(settings['train_days'])))
         print('load {}'.format(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                             "npy/data_mean_{}.npy".format(settings['train_days']))))
+        # load graph
         if settings['graph_type'] == "geo":
             graph = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "npy/geo_graph.npy"))
             distances = graph.flatten()
@@ -107,9 +111,11 @@ def forecast(settings):
         else:
             raise ValueError('Error graph_type = {}'.format(settings['graph_type']))
 
+        # predict
         predictions = predict(settings, data_mean, data_scale, graph)  # (N,T,1)
         res.append(predictions)
 
+    # Multi-model fusion
     print(weights)
     total = (1.0 / weights[0])
     predictions1 = (1.0 / weights[0]) * res[0]
@@ -119,22 +125,25 @@ def forecast(settings):
     predictions1 = predictions1 / total
     print(predictions1.shape)
 
-
+    # MTGNN model prediction (model_list2)
     res = []
     weights = []
     for i in range(len(settings['model_list2'])):
+        # Select one of the models at a time
         di = settings['model_list2'][i]
         settings.update(di)
         print(settings)
         print(settings['model'], settings['checkpoints_in'], settings['weight'])
         weights.append(settings['weight'])
 
+        # load data_mean/scale
         data_mean = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                          "npy/data_mean_{}.npy".format(settings['train_days'])))
         data_scale = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                           "npy/data_scale_{}.npy".format(settings['train_days'])))
         print('load {}'.format(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                             "npy/data_mean_{}.npy".format(settings['train_days']))))
+        # load graph
         if settings['graph_type'] == "geo":
             graph = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "npy/geo_graph.npy"))
             distances = graph.flatten()
@@ -156,9 +165,11 @@ def forecast(settings):
         else:
             raise ValueError('Error graph_type = {}'.format(settings['graph_type']))
 
+        # predict
         predictions = predict(settings, data_mean, data_scale, graph)  # (N,T,1)
         res.append(predictions)
 
+    # Multi-model fusion
     print(weights)
     total = (1.0 / weights[0])
     predictions2 = (1.0 / weights[0]) * res[0]
@@ -168,5 +179,6 @@ def forecast(settings):
     predictions2 = predictions2 / total
     print(predictions2.shape)
 
-    predictions = predictions1 * 0.6 + predictions2 * 0.4
+    # AGCRN * 0.4 + MTGNN * 0.6
+    predictions = predictions1 * 0.4 + predictions2 * 0.6
     return predictions

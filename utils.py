@@ -14,8 +14,6 @@
 import sys
 import os
 import logging
-import glob
-import shutil
 import datetime
 import torch
 import argparse
@@ -39,12 +37,6 @@ def _create_if_not_exist(path):
 
 
 def get_local_time():
-    """
-    获取时间
-
-    Return:
-        datetime: 时间
-    """
     cur = datetime.datetime.now()
     cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
     return cur
@@ -52,7 +44,7 @@ def get_local_time():
 
 def get_logger(config, name=None):
     """
-    获取Logger对象
+    Logger
 
     Args:
         config(ConfigParser): config

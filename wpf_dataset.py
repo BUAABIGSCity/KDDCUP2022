@@ -1,11 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-# from fastdtw import fastdtw
 from torch.utils.data import Dataset
 from logging import getLogger
+# from fastdtw import fastdtw
 
 
+# Timestamp Fast Mapping
 time_dict = {
  '00:00': 0, '00:10': 1, '00:20': 2, '00:30': 3, '00:40': 4, '00:50': 5, '01:00': 6, '01:10': 7, '01:20': 8, '01:30': 9,
  '01:40': 10, '01:50': 11, '02:00': 12, '02:10': 13, '02:20': 14, '02:30': 15, '02:40': 16, '02:50': 17, '03:00': 18,
@@ -58,7 +59,7 @@ class PGL4WPFDataset(Dataset):
         super().__init__()
         self.unit_size = day_len
         self.train_days = train_days
-        self.points_per_hour = day_len // 24  # 6
+        self.points_per_hour = day_len // 24
         self.random = random
         self.only_useful = only_useful
         self.dtw_topk = dtw_topk
@@ -85,7 +86,7 @@ class PGL4WPFDataset(Dataset):
         self.weight_adj_epsilon = weight_adj_epsilon
         self._logger = getLogger()
 
-        self.total_size = self.unit_size * total_days  # 每一个ID有这么多行
+        self.total_size = self.unit_size * total_days
         self.train_size = train_days * self.unit_size
         self.val_size = val_days * self.unit_size
         self.test_size = test_days * self.unit_size
@@ -96,7 +97,7 @@ class PGL4WPFDataset(Dataset):
         df_data, raw_df_data = self.data_preprocess(df_raw)
         print(df_data.shape, raw_df_data.shape)
         self.df_data = df_data  # nan->0
-        self.raw_df_data = raw_df_data  # 可能有nan
+        self.raw_df_data = raw_df_data  # contain nan
 
         data_x, graph = self.build_graph_data(df_data)
         self._logger.info(f"data_shape: {data_x.shape}")

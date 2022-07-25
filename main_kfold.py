@@ -103,8 +103,6 @@ def train_and_evaluate(config, dataset):
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_norm)
             if global_step % grad_accmu_steps == 0:
                 opt.step()
-                if lr_scheduler is not None and config.lr_scheduler_type.lower() == 'cosine':
-                    lr_scheduler.step_update(num_updates=global_step)
                 opt.zero_grad()
             global_step += 1
             losses.append(loss.item())
@@ -129,8 +127,6 @@ def train_and_evaluate(config, dataset):
         if lr_scheduler is not None:
             if config.lr_scheduler_type.lower() == 'reducelronplateau':
                 lr_scheduler.step(valid_r['loss'])
-            elif config.lr_scheduler_type.lower() == 'cosine':
-                lr_scheduler.step(epoch + 1)
             else:
                 lr_scheduler.step()
 
@@ -192,18 +188,6 @@ def evaluate(valid_data_loader,
             step += 1
         model.train()
 
-        pred_batch = np.concatenate(pred_batch, axis=0)  # (B,N,T)
-        gold_batch = np.concatenate(gold_batch, axis=0)  # (B,N,T)
-        input_batch = np.concatenate(input_batch, axis=0)  # (B,N,T)
-
-        pred_batch = np.expand_dims(pred_batch, -1)  # (B,N,T,1)
-        gold_batch = np.expand_dims(gold_batch, -1)  # (B,N,T,1)
-        input_batch = np.expand_dims(input_batch, -1)  # (B,N,T,1)
-
-        pred_batch = np.transpose(pred_batch, [1, 0, 2, 3])  # (N,B,T,1)
-        gold_batch = np.transpose(gold_batch, [1, 0, 2, 3])  # (N,B,T,1)
-        input_batch = np.transpose(input_batch, [1, 0, 2, 3])  # (N,B,T,1)
-
         output_metric = {
             'loss': np.mean(losses),
         }
@@ -216,34 +200,30 @@ if __name__ == "__main__":
     parser.add_argument("--conf", type=str, default="./config.yaml")
     parser.add_argument("--model", type=str, default="AGCRN")
     parser.add_argument("--gpu_id", type=int, default=0)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--random", type=str2bool, default=False, help='Whether shuffle num_nodes')
-    parser.add_argument("--enhance", type=str2bool, default=True, help='Whether enhance the time dim')
-    parser.add_argument("--only_useful", type=str2bool, default=False, help='Whether remove some feature')
-    parser.add_argument("--var_len", type=int, default=6, help='Dimensionality of input features')
-    parser.add_argument("--data_diff", type=str2bool, default=False, help='Whether to use data differential features')
+    parser.add_argument("--epoch", type=int, default=30)
     parser.add_argument("--input_len", type=int, default=144, help='input data len')
     parser.add_argument("--output_len", type=int, default=288, help='output data len')
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--weight_decay", type=float, default=0)
-    parser.add_argument("--dropout", type=float, default=0)
-    parser.add_argument("--rnn_units", type=int, default=64)
-    parser.add_argument("--embed_dim", type=int, default=10)
-    parser.add_argument("--cheb_order", type=int, default=2)
-    parser.add_argument("--num_layers", type=int, default=2)
-    parser.add_argument("--add_apt", type=str2bool, default=True)
-    parser.add_argument("--binary", type=str2bool, default=True)
-    parser.add_argument("--time_dim", type=int, default=0)
-    parser.add_argument("--K", type=int, default=5, help='K-fold')
-    parser.add_argument("--ind", type=int, default=0, help='selected fold for validation set')
-    parser.add_argument("--pad", type=str2bool, default=False, help='pad with last sample')
     parser.add_argument("--train_days", type=int, default=214)
     parser.add_argument("--val_days", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--seed", type=int, default=0)
+
+    parser.add_argument("--K", type=int, default=5, help='K-fold')
+    parser.add_argument("--ind", type=int, default=0, help='selected fold for validation set')
+    parser.add_argument("--random", type=str2bool, default=False, help='Whether shuffle num_nodes')
+    parser.add_argument("--enhance", type=str2bool, default=True, help='Whether enhance the time dim')
+    parser.add_argument("--only_useful", type=str2bool, default=False, help='Whether remove some feature')
+    parser.add_argument("--var_len", type=int, default=6, help='Dimensionality of input features')
+    parser.add_argument("--data_diff", type=str2bool, default=True, help='Whether to use data differential features')
+    parser.add_argument("--add_apt", type=str2bool, default=True, help='Whether to use adaptive matrix')
+    parser.add_argument("--binary", type=str2bool, default=True, help='Whether to set the adjacency matrix as binary')
+    parser.add_argument("--pad", type=str2bool, default=False, help='pad with last sample')
     parser.add_argument("--graph_type", type=str, default="dtw", help='graph type, dtw or geo')
     parser.add_argument("--dtw_topk", type=int, default=5, help='M dtw for dtw graph')
     parser.add_argument("--weight_adj_epsilon", type=float, default=0.8, help='epsilon for geo graph')
     parser.add_argument("--gsteps", type=int, default=1, help='Gradient Accumulation')
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--loss", type=str, default='FilterHuberLoss')
     parser.add_argument("--select", nargs='+', type=str,
                         default=['weekday', 'time', 'Wspd', 'Etmp', 'Itmp', 'Prtv', 'Patv'])
