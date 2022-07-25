@@ -1,0 +1,34 @@
+# dataset
+data_path: "./data"
+filename: "wtbdata_245days.csv"
+input_len: 144 
+output_len: 288
+var_len: 10
+capacity: 134
+patient: 5
+
+train_days: 214 
+val_days: 31
+test_days: 0
+total_days: 245 
+
+seed: 0
+best: 3
+num_workers: 2
+epoch: 30
+batch_size: 32 
+output_path: "./output/"
+log_per_steps: 100
+lr: 0.001
+clip_norm: 5
+weight_decay: 0
+learner: "adam"
+lr_decay: False
+lr_scheduler_type: None
+lr_eta_min: 0.00001
+lr_decay_ratio: 0.1
+lr_warmup_epoch: 5
+lr_warmup_init: 0.000001
+
+
+loss: "FilterHuberLoss"
