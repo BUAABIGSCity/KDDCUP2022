@@ -206,7 +206,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--weight_decay", type=float, default=0)
     parser.add_argument("--train_days", type=int, default=214)
-    parser.add_argument("--val_days", type=int, default=16)
+    parser.add_argument("--val_days", type=int, default=31)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=0)
 
