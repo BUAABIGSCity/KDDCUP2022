@@ -1,6 +1,10 @@
 # Spatial-Temporal Graph Neural Network for Wind Power Forecasting in Baidu KDD CUP 2022
 
-This repository contains the Baidu KDD CUP2022 solution by [aptx1231](https://github.com/aptx1231), [NickHan-cs](https://github.com/NickHan-cs).  Our team name is **BUAA\_BIGSCity**, winning 11th place in 2490 teams. The overall structure of the codes refers to the [official baseline](https://github.com/PaddlePaddle/PGL/tree/main/examples/kddcup2022/wpf_baseline). The `submit.zip` here is our final submission file.
+This repository contains the Baidu KDD CUP2022 solution by [aptx1231](https://github.com/aptx1231), [NickHan-cs](https://github.com/NickHan-cs).  
+
+Our team name is **BUAA\_BIGSCity**, winning 11th place in 2490 teams. 
+
+The overall structure of the codes refers to the [official baseline](https://github.com/PaddlePaddle/PGL/tree/main/examples/kddcup2022/wpf_baseline). The `submit.zip` here is our final submission file.
 
 ## Overview
 
