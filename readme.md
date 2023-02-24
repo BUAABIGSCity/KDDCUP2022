@@ -6,6 +6,8 @@ Our team name is **BUAA\_BIGSCity**, winning 11th place in 2490 teams.
 
 The overall structure of the codes refers to the [official baseline](https://github.com/PaddlePaddle/PGL/tree/main/examples/kddcup2022/wpf_baseline). The `submit.zip` here is our final submission file.
 
+See more details in our paper [BUAA_BIGSCity: Spatial-Temporal Graph Neural Network for Wind Power Forecasting in Baidu KDD CUP 2022](https://arxiv.org/abs/2302.11159).
+
 ## Overview
 
 Wind power is a rapidly growing source of clean energy. Accurate wind power forecasting is essential for grid stability and the security of supply. Therefore, organizers provide a wind power dataset containing historical data from 134 wind turbines and launch the [Baidu KDD Cup 2022](https://aistudio.baidu.com/aistudio/competition/detail/152/0/introduction) to examine the limitations of current methods for wind power forecasting. The average of RMSE (Root Mean Square Error) and MAE (Mean Absolute Error) is used as the evaluation score. 
